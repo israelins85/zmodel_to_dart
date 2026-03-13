@@ -32,12 +32,12 @@ class ZModelRpcGenerator {
       '}) {',
     );
     buffer.writeln('    final payload = <String, dynamic>{');
-    buffer.writeln("      ...?_let(where, (value) => {'where': value}),");
-    buffer.writeln("      ...?_let(select, (value) => {'select': value}),");
-    buffer.writeln("      ...?_let(include, (value) => {'include': value}),");
-    buffer.writeln("      ...?_let(orderBy, (value) => {'orderBy': value}),");
-    buffer.writeln("      ...?_let(take, (value) => {'take': value}),");
-    buffer.writeln("      ...?_let(skip, (value) => {'skip': value}),");
+    buffer.writeln("      'where': ?where,");
+    buffer.writeln("      'select': ?select,");
+    buffer.writeln("      'include': ?include,");
+    buffer.writeln("      'orderBy': ?orderBy,");
+    buffer.writeln("      'take': ?take,");
+    buffer.writeln("      'skip': ?skip,");
     buffer.writeln('    };');
     buffer.writeln(
       '    if (payload.isEmpty && (meta == null || meta.isEmpty)) return null;',
@@ -50,10 +50,6 @@ class ZModelRpcGenerator {
     buffer.writeln('    }');
     buffer.writeln('    return params;');
     buffer.writeln('  }');
-    buffer.writeln();
-    buffer.writeln(
-      '  R? _let<TValue, R>(TValue? value, R Function(TValue value) builder) => value == null ? null : builder(value);',
-    );
     buffer.writeln();
     buffer.writeln(
       '  Future<List<T>> findMany<T extends ZModel>({'
@@ -117,7 +113,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('create'), body: {'data': data.toJson(), if (select != null) 'select': select, if (include != null) 'include': include});",
+      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('create'), body: {'data': data.toJson(), 'select': ?select, 'include': ?include});",
     );
     buffer.writeln(
       '    return ZModel.fromJson<T>(response as Map<String, dynamic>);',
@@ -133,7 +129,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('update'), body: {'data': data.toJson(), if (where != null) 'where': where, if (select != null) 'select': select, if (include != null) 'include': include});",
+      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('update'), body: {'data': data.toJson(), 'where': ?where, 'select': ?select, 'include': ?include});",
     );
     buffer.writeln(
       '    return ZModel.fromJson<T>(response as Map<String, dynamic>);',
@@ -150,7 +146,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('upsert'), body: {'create': create.toJson(), 'update': update.toJson(), if (where != null) 'where': where, if (select != null) 'select': select, if (include != null) 'include': include});",
+      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('upsert'), body: {'create': create.toJson(), 'update': update.toJson(), 'where': ?where, 'select': ?select, 'include': ?include});",
     );
     buffer.writeln(
       '    return ZModel.fromJson<T>(response as Map<String, dynamic>);',
@@ -190,7 +186,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('updateMany'), body: {'data': data, if (where != null) 'where': where});",
+      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('updateMany'), body: {'data': data, 'where': ?where});",
     );
     buffer.writeln(
       '    return Map<String, dynamic>.from(response as Map<String, dynamic>);',
@@ -203,7 +199,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('deleteMany'), body: {if (where != null) 'where': where});",
+      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('deleteMany'), body: {'where': ?where});",
     );
     buffer.writeln(
       '    return Map<String, dynamic>.from(response as Map<String, dynamic>);',

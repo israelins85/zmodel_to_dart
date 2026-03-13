@@ -27,12 +27,8 @@ class ZModelRequest {
 
   /// Creates a request builder from prebuilt payload and meta maps.
   ZModelRequest.from({Map<String, dynamic>? data, Map<String, dynamic>? meta}) {
-    if (data != null) {
-      _data.addAll(data);
-    }
-    if (meta != null) {
-      _meta.addAll(meta);
-    }
+    _data.addAll(data ?? const {});
+    _meta.addAll(meta ?? const {});
   }
 
   final Map<String, dynamic> _data = {};
@@ -97,10 +93,7 @@ class ZModelRequest {
     Map<String, dynamic> data, {
     Map<String, dynamic>? where,
   }) {
-    _data['data'] = data;
-    if (where != null) {
-      _data['where'] = where;
-    }
+    _data.addAll({'data': data, 'where': ?where});
     return this;
   }
 
@@ -110,11 +103,7 @@ class ZModelRequest {
     required Map<String, dynamic> update,
     Map<String, dynamic>? where,
   }) {
-    _data['create'] = create;
-    _data['update'] = update;
-    if (where != null) {
-      _data['where'] = where;
-    }
+    _data.addAll({'create': create, 'update': update, 'where': ?where});
     return this;
   }
 
