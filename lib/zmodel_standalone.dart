@@ -31,10 +31,9 @@ void runZModelStandalone(List<String> arguments) {
   );
 
   try {
-    ZModelGenerator(banner: config.banner).generateDirectory(
-      sourceFile: sourceFile,
-      outputDir: outputDir,
-    );
+    ZModelGenerator(
+      banner: config.banner,
+    ).generateDirectory(sourceFile: sourceFile, outputDir: outputDir);
     stdout.writeln('Generated DTOs into ${outputDir.path}');
   } on ArgumentError catch (error) {
     stderr.writeln(error.message);

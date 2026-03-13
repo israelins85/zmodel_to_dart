@@ -24,9 +24,15 @@ model user {
     final parsed = generator.parse(source);
     final output = generator.renderSingleLibrary(parsed);
 
+    expect(output, contains('abstract class ZModel {'));
+    expect(output, contains("case const (User): return 'user';"));
+    expect(
+      output,
+      contains('case const (User): return User.fromJson(json) as T;'),
+    );
     expect(output, contains('enum Role {'));
     expect(output, contains("admin('admin')"));
-    expect(output, contains('class User {'));
+    expect(output, contains('class User extends ZModel {'));
     expect(output, contains('final String? id;'));
     expect(output, contains('final Role? role;'));
     expect(output, contains('final DateTime? createdAt;'));
@@ -81,5 +87,67 @@ model tb_parameter extends base_model {
     expect(RegExp(r'required this\.uuid').allMatches(output), isEmpty);
     expect(output.split("uuid: json['UUID']").length - 1, 1);
     expect(output.split("'UUID': uuid").length - 1, 1);
+  });
+
+  test('loads rpc config from zmodel_to_dart.yaml', () {
+    final tempDir = Directory.systemTemp.createTempSync('zmodel_to_dart_test_');
+    addTearDown(() => tempDir.deleteSync(recursive: true));
+
+    final configFile = File(path.join(tempDir.path, 'zmodel_to_dart.yaml'));
+    configFile.writeAsStringSync('''
+generate_rpc_clients: true
+rpc_base_path: /api/rpc/model
+''');
+
+    final config = ZModelToDartConfig.load(workingDirectory: tempDir.path);
+
+    expect(config.generateRpcClients, isTrue);
+    expect(config.rpcBasePath, '/api/rpc/model');
+  });
+
+  test('generates a generic rpc client with direct method parameters', () {
+    const source = '''
+model user {
+  id String @id
+  name String
+}
+''';
+
+    final generator = ZModelGenerator();
+    final parsed = generator.parse(source);
+    final output = generator.renderSingleLibrary(
+      parsed,
+      includeRpcClients: true,
+      rpcBasePath: '/api/rpc/model',
+    );
+
+    expect(output, contains('enum ZenStackRpcMethod { get, post }'));
+    expect(output, contains('abstract interface class ZenStackRpcTransport {'));
+    expect(output, contains('class ZModelRpcClient {'));
+    expect(
+      output,
+      contains(
+        'Future<List<T>> findMany<T extends ZModel>({Map<String, dynamic>? where, Map<String, dynamic>? select, Map<String, dynamic>? include, List<Map<String, String>>? orderBy, int? take, int? skip, Map<String, dynamic>? meta}) async {',
+      ),
+    );
+    expect(
+      output,
+      contains(
+        r'String _path<T extends ZModel>(String operation) => "$basePath/${ZModel.modelNameOf<T>()}/$operation";',
+      ),
+    );
+    expect(output, contains('Map<String, String>? _queryParameters({'));
+    expect(output, contains("_path<T>('findMany')"));
+    expect(output, contains('return ZModel.listFromJson<T>(items);'));
+    expect(
+      output,
+      contains('return ZModel.fromJson<T>(response as Map<String, dynamic>);'),
+    );
+    expect(
+      output,
+      contains("final params = <String, String>{'q': jsonEncode(payload)};"),
+    );
+    expect(output, contains("'data': data.toJson()"));
+    expect(output, contains("'where': where"));
   });
 }

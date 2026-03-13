@@ -31,7 +31,11 @@ class _ZModelToDartBuilder implements Builder {
 
     final source = await buildStep.readAsString(inputId);
     final parsed = _generator.parse(source);
-    final output = _generator.renderSingleLibrary(parsed);
+    final output = _generator.renderSingleLibrary(
+      parsed,
+      includeRpcClients: _config.generateRpcClients,
+      rpcBasePath: _config.rpcBasePath,
+    );
     final outputId = inputId.changeExtension(_config.outputSuffix);
     await buildStep.writeAsString(outputId, output);
   }

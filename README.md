@@ -8,6 +8,7 @@ A Dart builder that generates DTO classes from `.zmodel` files.
 - Generates DTO classes with `fromJson` and `toJson`
 - Supports inherited fields from `extends`
 - Handles scalar values, enums, bytes, arrays, and nested model references
+- Optionally generates ZenStack RPC clients with direct typed parameters
 
 ## Usage
 
@@ -42,6 +43,8 @@ input_globs:
 output_suffix: .zmodel.dart
 output_dir: lib/data/dtos
 banner: // AUTO GENERATED FILE, DO NOT EDIT
+generate_rpc_clients: true
+rpc_base_path: /api/model
 ```
 
 4. Run:
@@ -51,6 +54,69 @@ dart run build_runner build
 ```
 
 This generates a sibling file like `user.zmodel.dart`.
+
+When `generate_rpc_clients` is enabled, the generated library also contains a single generic RPC client. The output file declares `ZModel`, generated DTOs extend it, and the client infers the model from `T`:
+
+```dart
+final client = ZModelRpcClient(transport, basePath: '/api/model');
+final users = await client.findMany<User>(
+  where: {'id': 'user_1'},
+  include: {'posts': true},
+);
+
+final created = await client.create<User>(user);
+final updated = await client.update<User>(user, where: {'id': user.id});
+final deleted = await client.delete<User>(where: {'id': user.id});
+```
+
+Example using `Dio`:
+
+```dart
+import 'package:dio/dio.dart';
+
+class DioZenStackRpcTransport implements ZenStackRpcTransport {
+  DioZenStackRpcTransport(this._dio);
+
+  final Dio _dio;
+
+  @override
+  Future<Object?> send(
+    ZenStackRpcMethod method,
+    String path, {
+    Map<String, String>? queryParameters,
+    Object? body,
+  }) async {
+    late final Response<dynamic> response;
+
+    switch (method) {
+      case ZenStackRpcMethod.get:
+        response = await _dio.get<dynamic>(
+          path,
+          queryParameters: queryParameters,
+        );
+        break;
+      case ZenStackRpcMethod.post:
+        response = await _dio.post<dynamic>(
+          path,
+          queryParameters: queryParameters,
+          data: body,
+        );
+        break;
+    }
+
+    return response.data;
+  }
+}
+
+final dio = Dio(BaseOptions(baseUrl: 'http://localhost:3000'));
+final transport = DioZenStackRpcTransport(dio);
+final client = ZModelRpcClient(transport, basePath: '/api/model');
+
+final users = await client.findMany<User>(
+  where: {'active': true},
+  take: 20,
+);
+```
 
 The builder reads `zmodel_to_dart.yaml` automatically. `build_runner` still needs a minimal `build.yaml` entry to enable the builder, but input filtering and output naming can live in `zmodel_to_dart.yaml`.
 

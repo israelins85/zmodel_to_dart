@@ -11,6 +11,8 @@ class ZModelToDartConfig {
     this.outputSuffix = '.zmodel.dart',
     this.outputDir = 'lib/data/dtos',
     this.banner = '// AUTO GENERATED FILE, DO NOT EDIT',
+    this.generateRpcClients = false,
+    this.rpcBasePath = '/api/model',
   }) : inputGlobs = List.unmodifiable(inputGlobs ?? const ['schema/*.zmodel']) {
     if (!outputSuffix.startsWith('.')) {
       throw ArgumentError.value(
@@ -26,6 +28,8 @@ class ZModelToDartConfig {
   final String outputSuffix;
   final String outputDir;
   final String banner;
+  final bool generateRpcClients;
+  final String rpcBasePath;
 
   List<Glob> get _compiledGlobs => inputGlobs.map(Glob.new).toList();
 
@@ -47,10 +51,14 @@ class ZModelToDartConfig {
     final map = document as YamlMap?;
     return ZModelToDartConfig(
       configPath: configPath,
-      inputGlobs: _readStringList(map, 'input_globs') ?? const ['schema/*.zmodel'],
+      inputGlobs:
+          _readStringList(map, 'input_globs') ?? const ['schema/*.zmodel'],
       outputSuffix: _readString(map, 'output_suffix') ?? '.zmodel.dart',
       outputDir: _readString(map, 'output_dir') ?? 'lib/data/dtos',
-      banner: _readString(map, 'banner') ?? '// AUTO GENERATED FILE, DO NOT EDIT',
+      banner:
+          _readString(map, 'banner') ?? '// AUTO GENERATED FILE, DO NOT EDIT',
+      generateRpcClients: _readBool(map, 'generate_rpc_clients') ?? false,
+      rpcBasePath: _readString(map, 'rpc_base_path') ?? '/api/model',
     );
   }
 
@@ -113,13 +121,24 @@ class ZModelToDartConfig {
       throw FormatException('"$key" in zmodel_to_dart.yaml must be a list.');
     }
 
-    return value.map((item) {
-      if (item is! String) {
-        throw FormatException(
-          'All entries in "$key" in zmodel_to_dart.yaml must be strings.',
-        );
-      }
-      return item;
-    }).toList(growable: false);
+    return value
+        .map((item) {
+          if (item is! String) {
+            throw FormatException(
+              'All entries in "$key" in zmodel_to_dart.yaml must be strings.',
+            );
+          }
+          return item;
+        })
+        .toList(growable: false);
+  }
+
+  static bool? _readBool(YamlMap? map, String key) {
+    final value = map?[key];
+    if (value == null) return null;
+    if (value is! bool) {
+      throw FormatException('"$key" in zmodel_to_dart.yaml must be a boolean.');
+    }
+    return value;
   }
 }

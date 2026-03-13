@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'rpc_generator.dart';
+
 class ZModelGenerator {
   ZModelGenerator({this.banner = '// AUTO GENERATED FILE, DO NOT EDIT'});
 
@@ -132,22 +134,40 @@ class ZModelGenerator {
     }
   }
 
-  String renderSingleLibrary(ParsedZModel parsed) {
+  String renderSingleLibrary(
+    ParsedZModel parsed, {
+    bool includeRpcClients = false,
+    String rpcBasePath = '/api/model',
+  }) {
     final buffer = StringBuffer()
       ..writeln(banner)
       ..writeln();
 
-    if (parsed.requiresConvertImport) {
+    if (parsed.requiresConvertImport || includeRpcClients) {
       buffer.writeln("import 'dart:convert';");
     }
     if (parsed.requiresTypedDataImport) {
       buffer.writeln("import 'dart:typed_data';");
     }
-    if (parsed.requiresConvertImport || parsed.requiresTypedDataImport) {
+    if (parsed.requiresConvertImport ||
+        parsed.requiresTypedDataImport ||
+        includeRpcClients) {
       buffer.writeln();
     }
 
     var first = true;
+    final hasConcreteTables = parsed.tables.any((table) => !table.isAbstract);
+    if (hasConcreteTables || includeRpcClients) {
+      buffer.write(_renderZModelBase(parsed));
+      first = false;
+    }
+
+    if (includeRpcClients) {
+      if (!first) buffer.writeln();
+      buffer.write(_renderRpcSupport());
+      first = false;
+    }
+
     for (final item in parsed.enums.where((item) => !item.isEmpty)) {
       if (!first) buffer.writeln();
       buffer.write(_renderEnumBody(item));
@@ -158,6 +178,16 @@ class ZModelGenerator {
       if (!first) buffer.writeln();
       buffer.write(_renderTableBody(item));
       first = false;
+    }
+
+    if (includeRpcClients) {
+      final rpcClients = ZModelRpcGenerator(
+        basePath: rpcBasePath,
+      ).renderClient();
+      if (rpcClients.isNotEmpty) {
+        if (!first) buffer.writeln();
+        buffer.write(rpcClients);
+      }
     }
 
     return buffer.toString();
@@ -175,6 +205,9 @@ class ZModelGenerator {
     final buffer = StringBuffer()
       ..writeln(banner)
       ..writeln();
+
+    buffer.writeln("import 'package:zmodel_to_dart/zmodel_to_dart.dart';");
+    buffer.writeln();
 
     if (definition.allColumns.any((column) => column.dartType == 'Uint8List')) {
       buffer.writeln("import 'dart:convert';");
@@ -233,7 +266,7 @@ class ZModelGenerator {
 
   String _renderTableBody(TableDefinition definition) {
     final buffer = StringBuffer();
-    buffer.writeln('class ${definition.className} {');
+    buffer.writeln('class ${definition.className} extends ZModel {');
 
     for (final column in definition.allColumns) {
       buffer.writeln('  ${column.attributeDefinition}');
@@ -263,6 +296,68 @@ class ZModelGenerator {
     }
     buffer.writeln('    };');
     buffer.writeln('  }');
+    buffer.writeln('}');
+    return buffer.toString();
+  }
+
+  String _renderZModelBase(ParsedZModel parsed) {
+    final tables = parsed.tables.where((table) => !table.isAbstract).toList();
+    final buffer = StringBuffer();
+    buffer.writeln('abstract class ZModel {');
+    buffer.writeln('  const ZModel();');
+    buffer.writeln();
+    buffer.writeln('  Map<String, dynamic> toJson();');
+    buffer.writeln();
+    buffer.writeln('  static String modelNameOf<T extends ZModel>() {');
+    buffer.writeln('    switch (T) {');
+    for (final table in tables) {
+      buffer.writeln(
+        "      case const (${table.className}): return '${table.name}';",
+      );
+    }
+    buffer.writeln(
+      "      default: throw ArgumentError('Unknown ZModel type: \$T');",
+    );
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln(
+      '  static T fromJson<T extends ZModel>(Map<String, dynamic> json) {',
+    );
+    buffer.writeln('    switch (T) {');
+    for (final table in tables) {
+      buffer.writeln(
+        '      case const (${table.className}): return ${table.className}.fromJson(json) as T;',
+      );
+    }
+    buffer.writeln(
+      "      default: throw ArgumentError('Unknown ZModel type: \$T');",
+    );
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln(
+      '  static List<T> listFromJson<T extends ZModel>(List<dynamic> items) {',
+    );
+    buffer.writeln(
+      '    return items.map((item) => fromJson<T>(item as Map<String, dynamic>)).toList();',
+    );
+    buffer.writeln('  }');
+    buffer.writeln('}');
+    return buffer.toString();
+  }
+
+  String _renderRpcSupport() {
+    final buffer = StringBuffer();
+    buffer.writeln('enum ZenStackRpcMethod { get, post }');
+    buffer.writeln();
+    buffer.writeln('abstract interface class ZenStackRpcTransport {');
+    buffer.writeln('  Future<Object?> send(');
+    buffer.writeln('    ZenStackRpcMethod method,');
+    buffer.writeln('    String path, {');
+    buffer.writeln('    Map<String, String>? queryParameters,');
+    buffer.writeln('    Object? body,');
+    buffer.writeln('  });');
     buffer.writeln('}');
     return buffer.toString();
   }
@@ -370,8 +465,9 @@ class TableDefinition {
 
     for (final column in columns) {
       final existing = mergedByName[column.name];
-      mergedByName[column.name] =
-          existing == null ? column : existing.merged(column);
+      mergedByName[column.name] = existing == null
+          ? column
+          : existing.merged(column);
     }
 
     final ret = mergedByName.values.toList();
