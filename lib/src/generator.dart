@@ -2,11 +2,15 @@ import 'dart:io';
 
 import 'rpc_generator.dart';
 
+/// Parses `.zmodel` schema source and renders Dart output.
 class ZModelGenerator {
+  /// Creates a generator with an optional file banner.
   ZModelGenerator({this.banner = '// AUTO GENERATED FILE, DO NOT EDIT'});
 
+  /// Banner written at the top of generated files.
   final String banner;
 
+  /// Parses raw `.zmodel` source into model and enum definitions.
   ParsedZModel parse(String source) {
     final lines = source.split('\n');
     TableDefinition? tableDefinition;
@@ -102,6 +106,7 @@ class ZModelGenerator {
     return ParsedZModel(tables: tables.values.toList(), enums: enums);
   }
 
+  /// Generates one file per parsed declaration into [outputDir].
   void generateDirectory({
     required File sourceFile,
     required Directory outputDir,
@@ -134,6 +139,7 @@ class ZModelGenerator {
     }
   }
 
+  /// Renders the parsed schema as a single Dart library.
   String renderSingleLibrary(
     ParsedZModel parsed, {
     bool includeRpcClients = false,
@@ -193,6 +199,7 @@ class ZModelGenerator {
     return buffer.toString();
   }
 
+  /// Renders an enum definition as its own Dart file.
   String renderEnum(EnumDefinition definition) {
     final buffer = StringBuffer()
       ..writeln(banner)
@@ -201,6 +208,7 @@ class ZModelGenerator {
     return buffer.toString();
   }
 
+  /// Renders a table definition as its own Dart file.
   String renderTable(TableDefinition definition) {
     final buffer = StringBuffer()
       ..writeln(banner)
@@ -363,23 +371,35 @@ class ZModelGenerator {
   }
 }
 
+/// Parsed representation of a `.zmodel` file.
 class ParsedZModel {
+  /// Creates a parsed schema with tables and enums.
   ParsedZModel({required this.tables, required this.enums});
 
+  /// Parsed model definitions.
   final List<TableDefinition> tables;
+
+  /// Parsed enum definitions.
   final List<EnumDefinition> enums;
 
+  /// Whether generated output needs `dart:convert`.
   bool get requiresConvertImport => tables.any(
     (table) => table.allColumns.any((column) => column.dartType == 'Uint8List'),
   );
 
+  /// Whether generated output needs `dart:typed_data`.
   bool get requiresTypedDataImport => requiresConvertImport;
 }
 
+/// String case conversion helpers used for generated identifiers.
 enum StringCase {
+  /// Converts identifiers to `camelCase`.
   camelCase,
+
+  /// Converts identifiers to `PascalCase`.
   pascalCase;
 
+  /// Converts [input] to the selected casing style.
   String convert(String input) {
     if (input.isEmpty) return '';
 
@@ -418,18 +438,27 @@ List<String> _normalizeName(String input) {
       .toList();
 }
 
+/// Parsed enum declaration from a `.zmodel` file.
 class EnumDefinition {
+  /// Creates an enum definition.
   EnumDefinition({required this.name, required this.values});
 
+  /// Original enum name from the schema.
   final String name;
+
+  /// Enum values in declaration order.
   final List<String> values;
 
+  /// Generated Dart enum class name.
   String get className => StringCase.pascalCase.convert(name);
 
+  /// Default filename for the enum when emitted separately.
   String get fileName => '${name.toLowerCase()}.dart';
 
+  /// Whether the enum has no values.
   bool get isEmpty => values.isEmpty;
 
+  /// Adds a parsed enum value line.
   void addValue(String trimmedLine) {
     trimmedLine = trimmedLine.replaceAll(RegExp(r'//.*'), '').split(' ').first;
     trimmedLine = trimmedLine.trim();
@@ -438,23 +467,37 @@ class EnumDefinition {
   }
 }
 
+/// Parsed model declaration from a `.zmodel` file.
 class TableDefinition {
+  /// Creates a model definition.
   TableDefinition({
     required this.name,
     required this.isAbstract,
     required this.extendsTableName,
   });
 
+  /// Original model name from the schema.
   final String name;
+
+  /// Whether the model is declared as `abstract`.
   final bool isAbstract;
+
+  /// Name of the inherited base model, if any.
   final String extendsTableName;
+
+  /// Resolved parent table definition when `extends` is used.
   TableDefinition? extendsTable;
+
+  /// Columns declared directly on the model.
   final List<ColumnDefinition> columns = [];
 
+  /// Generated Dart class name.
   String get className => StringCase.pascalCase.convert(name);
 
+  /// Default filename for the model when emitted separately.
   String get fileName => '${name.toLowerCase()}.dart';
 
+  /// All columns including inherited and merged directive metadata.
   List<ColumnDefinition> get allColumns {
     final inherited = extendsTable?.allColumns ?? const <ColumnDefinition>[];
     final mergedByName = <String, ColumnDefinition>{};
@@ -485,6 +528,7 @@ class TableDefinition {
     return ret;
   }
 
+  /// Parses and merges a single model body line.
   void parseColumn(String trimmedLine) {
     final definitions = ColumnDefinition.parse(trimmedLine);
     for (final definition in definitions) {
@@ -499,13 +543,16 @@ class TableDefinition {
     }
   }
 
+  /// Resolves the inherited table reference from the parsed schema map.
   void resolveExtends(Map<String, TableDefinition> tables) {
     if (extendsTableName.isEmpty) return;
     extendsTable = tables[extendsTableName];
   }
 }
 
+/// Parsed column definition or table directive fragment.
 class ColumnDefinition {
+  /// Creates a column definition.
   ColumnDefinition({
     required this.name,
     required this.isNullable,
@@ -517,15 +564,31 @@ class ColumnDefinition {
     required this.dartType,
   }) : assert(name.isNotEmpty);
 
+  /// Original column name from the schema.
   final String name;
+
+  /// Original ZModel type name.
   final String zmodelType;
+
+  /// Generated Dart type name.
   final String dartType;
+
+  /// Whether the column is a list.
   final bool isArray;
+
+  /// Whether the column references another model or enum-like object.
   final bool isForeignKey;
+
+  /// Whether the column is nullable.
   final bool isNullable;
+
+  /// Whether the column participates in the primary key.
   final bool isPrimaryKey;
+
+  /// Whether the column is marked unique.
   final bool isUnique;
 
+  /// Builds a column definition from a schema field declaration.
   factory ColumnDefinition.build(String name, String type, String decorators) {
     var isNullable = true;
     final isPrimaryKey = decorators.contains('@id');
@@ -603,6 +666,7 @@ class ColumnDefinition {
     );
   }
 
+  /// Merges metadata from another column definition with the same name.
   ColumnDefinition merged(ColumnDefinition other) {
     return ColumnDefinition(
       name: name,
@@ -616,6 +680,7 @@ class ColumnDefinition {
     );
   }
 
+  /// Parses a single schema line into zero or more column definitions.
   static List<ColumnDefinition> parse(String line) {
     if (line.startsWith('@@id')) {
       return _parseTableDirective(line, isPrimaryKey: true);
@@ -669,10 +734,13 @@ class ColumnDefinition {
         .toList();
   }
 
+  /// Generated Dart field name.
   String get attributeName => StringCase.camelCase.convert(name);
 
+  /// Generated Dart type declaration, including list wrappers when needed.
   String get typeDefinition => isArray ? 'List<$dartType>' : dartType;
 
+  /// Generated Dart field declaration.
   String get attributeDefinition {
     if ((isNullable || isForeignKey) && typeDefinition != 'dynamic') {
       return 'final $typeDefinition? $attributeName;';
@@ -680,6 +748,7 @@ class ColumnDefinition {
     return 'final $typeDefinition $attributeName;';
   }
 
+  /// Generated constructor parameter snippet.
   String get attributeConstructor {
     if (isNullable || isForeignKey) {
       return 'this.$attributeName,';
@@ -687,6 +756,7 @@ class ColumnDefinition {
     return 'required this.$attributeName,';
   }
 
+  /// Generated `fromJson` expression for the field.
   String get castFromJson {
     var cast = '';
 
@@ -733,6 +803,7 @@ class ColumnDefinition {
     return "$attributeName: json['$name']$cast";
   }
 
+  /// Generated `toJson` expression for the field.
   String get castToJson {
     var cast = '';
 

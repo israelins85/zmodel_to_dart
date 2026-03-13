@@ -1,8 +1,12 @@
+/// Generates the inline ZenStack RPC client source code.
 class ZModelRpcGenerator {
+  /// Creates an RPC generator with the given base path.
   ZModelRpcGenerator({this.basePath = '/api/model'});
 
+  /// Base path used by generated RPC endpoints.
   final String basePath;
 
+  /// Renders the generic RPC client class source.
   String renderClient() {
     final buffer = StringBuffer();
     buffer.writeln('class ZModelRpcClient {');

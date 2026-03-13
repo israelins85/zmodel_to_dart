@@ -1,3 +1,6 @@
+/// Public API for generating Dart code from `.zmodel` schemas.
+library;
+
 export 'src/builder.dart';
 export 'src/config.dart';
 export 'src/generator.dart';

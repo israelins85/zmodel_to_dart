@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'package:zmodel_to_dart/src/config.dart';
 import 'package:zmodel_to_dart/src/generator.dart';
 
+/// Runs the standalone CLI entrypoint for generating code from a `.zmodel` file.
 void runZModelStandalone(List<String> arguments) {
   final config = ZModelToDartConfig.load();
 

@@ -4,7 +4,9 @@ import 'package:glob/glob.dart';
 import 'package:path/path.dart' as path;
 import 'package:yaml/yaml.dart';
 
+/// Configuration used by the builder and standalone CLI.
 class ZModelToDartConfig {
+  /// Creates a package configuration for `.zmodel` generation.
   ZModelToDartConfig({
     this.configPath = 'zmodel_to_dart.yaml',
     List<String>? inputGlobs,
@@ -23,16 +25,30 @@ class ZModelToDartConfig {
     }
   }
 
+  /// Path to the YAML configuration file.
   final String configPath;
+
+  /// Glob patterns used to discover `.zmodel` inputs.
   final List<String> inputGlobs;
+
+  /// Suffix applied to generated library files.
   final String outputSuffix;
+
+  /// Output directory used by the standalone generator.
   final String outputDir;
+
+  /// Banner written at the top of generated files.
   final String banner;
+
+  /// Whether generated libraries should also include RPC client helpers.
   final bool generateRpcClients;
+
+  /// Base path used by generated RPC client calls.
   final String rpcBasePath;
 
   List<Glob> get _compiledGlobs => inputGlobs.map(Glob.new).toList();
 
+  /// Loads configuration from `zmodel_to_dart.yaml` if it exists.
   static ZModelToDartConfig load({
     String configPath = 'zmodel_to_dart.yaml',
     String? workingDirectory,
@@ -62,6 +78,7 @@ class ZModelToDartConfig {
     );
   }
 
+  /// Returns whether an asset path matches any configured input glob.
   bool matchesAssetPath(String assetPath) {
     final normalized = path.posix.normalize(assetPath);
     for (final glob in _compiledGlobs) {
@@ -72,6 +89,7 @@ class ZModelToDartConfig {
     return false;
   }
 
+  /// Resolves a single source file from the configured input globs.
   File? resolveSourceFile({String? workingDirectory}) {
     final root = workingDirectory ?? Directory.current.path;
     final matches = <String>[];

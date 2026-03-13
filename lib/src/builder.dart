@@ -3,6 +3,7 @@ import 'package:build/build.dart';
 import 'config.dart';
 import 'generator.dart';
 
+/// Creates the `build_runner` builder for transforming `.zmodel` files.
 Builder zmodelToDartBuilder(BuilderOptions options) {
   final configPath =
       options.config['config_path'] as String? ?? 'zmodel_to_dart.yaml';

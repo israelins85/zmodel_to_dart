@@ -1,8 +1,17 @@
 import 'dart:convert';
 
-enum ZenStackRpcMethod { get, post }
+/// Supported HTTP verbs for the generated ZenStack RPC client.
+enum ZenStackRpcMethod {
+  /// Sends request data using HTTP GET.
+  get,
 
+  /// Sends request data using HTTP POST.
+  post,
+}
+
+/// Transport abstraction used by generated RPC clients.
 abstract interface class ZenStackRpcTransport {
+  /// Sends a request to the RPC backend and returns the decoded response body.
   Future<Object?> send(
     ZenStackRpcMethod method,
     String path, {
@@ -11,9 +20,12 @@ abstract interface class ZenStackRpcTransport {
   });
 }
 
+/// Mutable helper for building ZenStack RPC query strings and request bodies.
 class ZModelRequest {
+  /// Creates an empty request builder.
   ZModelRequest();
 
+  /// Creates a request builder from prebuilt payload and meta maps.
   ZModelRequest.from({Map<String, dynamic>? data, Map<String, dynamic>? meta}) {
     if (data != null) {
       _data.addAll(data);
@@ -26,36 +38,43 @@ class ZModelRequest {
   final Map<String, dynamic> _data = {};
   final Map<String, dynamic> _meta = {};
 
+  /// Sets the `select` clause.
   ZModelRequest select(Map<String, dynamic> fields) {
     _data['select'] = fields;
     return this;
   }
 
+  /// Sets the `where` clause.
   ZModelRequest where(Map<String, dynamic> conditions) {
     _data['where'] = conditions;
     return this;
   }
 
+  /// Sets the `orderBy` clause.
   ZModelRequest orderBy(List<Map<String, String>> orders) {
     _data['orderBy'] = orders;
     return this;
   }
 
+  /// Sets the `include` clause.
   ZModelRequest include(Map<String, dynamic> relations) {
     _data['include'] = relations;
     return this;
   }
 
+  /// Sets the `take` limit.
   ZModelRequest take(int limit) {
     _data['take'] = limit;
     return this;
   }
 
+  /// Sets the `skip` offset.
   ZModelRequest skip(int offset) {
     _data['skip'] = offset;
     return this;
   }
 
+  /// Adds serialization metadata for special value handling.
   ZModelRequest addMeta(String path, List<String> types) {
     final serialization =
         _meta.putIfAbsent('serialization', () => <String, dynamic>{})
@@ -67,11 +86,13 @@ class ZModelRequest {
     return this;
   }
 
+  /// Sets the `data` payload for create operations.
   ZModelRequest create(Map<String, dynamic> data) {
     _data['data'] = data;
     return this;
   }
 
+  /// Sets the `data` payload and optional `where` clause for update operations.
   ZModelRequest update(
     Map<String, dynamic> data, {
     Map<String, dynamic>? where,
@@ -83,6 +104,7 @@ class ZModelRequest {
     return this;
   }
 
+  /// Sets the payload for upsert operations.
   ZModelRequest upsert({
     required Map<String, dynamic> create,
     required Map<String, dynamic> update,
@@ -96,16 +118,19 @@ class ZModelRequest {
     return this;
   }
 
+  /// Sets the `where` clause for delete operations.
   ZModelRequest delete(Map<String, dynamic> where) {
     _data['where'] = where;
     return this;
   }
 
+  /// Sets the `where` clause for deleteMany operations.
   ZModelRequest deleteMany(Map<String, dynamic> where) {
     _data['where'] = where;
     return this;
   }
 
+  /// Encodes the request into a raw query string.
   String get asQueryString {
     final query = <String>[];
     query.add('q=${Uri.encodeComponent(jsonEncode(_data))}');
@@ -115,6 +140,7 @@ class ZModelRequest {
     return query.join('&');
   }
 
+  /// Encodes the request into query parameters expected by ZenStack RPC.
   Map<String, String> get asQueryParameters {
     final params = <String, String>{'q': jsonEncode(_data)};
     if (_meta.isNotEmpty) {
@@ -123,9 +149,12 @@ class ZModelRequest {
     return params;
   }
 
+  /// Returns the request body payload.
   Map<String, dynamic> get asBody => Map<String, dynamic>.unmodifiable(_data);
 
+  /// Returns the accumulated data map.
   Map<String, dynamic> get data => Map<String, dynamic>.unmodifiable(_data);
 
+  /// Returns the accumulated metadata map.
   Map<String, dynamic> get meta => Map<String, dynamic>.unmodifiable(_meta);
 }
