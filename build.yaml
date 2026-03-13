@@ -1,0 +1,8 @@
+builders:
+    zmodel_to_dart:
+        import: "package:zmodel_to_dart/zmodel_to_dart.dart"
+        builder_factories: ["zmodelToDartBuilder"]
+        build_extensions:
+            ".zmodel": [".zmodel.dart"]
+        auto_apply: dependents
+        build_to: source
