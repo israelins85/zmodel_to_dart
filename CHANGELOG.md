@@ -1,3 +1,10 @@
+## 0.2.1
+
+- Refined generated ZenStack RPC client method signatures
+- Simplified generated null-aware map entries for RPC payloads
+- Expanded public API documentation
+- Updated README examples and package version references
+
 ## 0.2.0
 
 - Added generated ZenStack RPC client support
