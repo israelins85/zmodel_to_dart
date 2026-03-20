@@ -16,7 +16,7 @@ A Dart builder that generates DTO classes from `.zmodel` files.
 
 ```yaml
 dev_dependencies:
-    zmodel_to_dart: ^0.2.1
+    zmodel_to_dart: ^0.2.2
     build_runner: ^2.7.0
 ```
 

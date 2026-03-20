@@ -1,3 +1,7 @@
+## 0.2.2
+
+- Normalized generated RPC path templates to use single-quoted Dart strings
+
 ## 0.2.1
 
 - Refined generated ZenStack RPC client method signatures

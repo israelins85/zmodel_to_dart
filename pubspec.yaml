@@ -1,6 +1,6 @@
 name: zmodel_to_dart
 description: A Dart builder to generate DTO classes from ZModel schema files
-version: 0.2.1
+version: 0.2.2
 homepage: https://github.com/israelins85/zmodel_to_dart
 repository: https://github.com/israelins85/zmodel_to_dart
 
