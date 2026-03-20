@@ -17,7 +17,7 @@ class ZModelRpcGenerator {
     buffer.writeln('  final String basePath;');
     buffer.writeln();
     buffer.writeln(
-      '  String _path<T extends ZModel>(String operation) => "\$basePath/\${ZModel.modelNameOf<T>()}/\$operation";',
+      '  String _path<T extends ZModel>(String operation) => \'\$basePath/\${ZModel.modelNameOf<T>()}/\$operation\';',
     );
     buffer.writeln();
     buffer.writeln(

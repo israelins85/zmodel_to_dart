@@ -133,7 +133,7 @@ model user {
     expect(
       output,
       contains(
-        r'String _path<T extends ZModel>(String operation) => "$basePath/${ZModel.modelNameOf<T>()}/$operation";',
+        r"String _path<T extends ZModel>(String operation) => '$basePath/${ZModel.modelNameOf<T>()}/$operation';",
       ),
     );
     expect(output, contains('Map<String, String>? _queryParameters({'));
