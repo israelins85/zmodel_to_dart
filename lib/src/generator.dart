@@ -103,6 +103,11 @@ class ZModelGenerator {
       table.resolveExtends(tables);
     }
 
+    final enumNames = enums.map((item) => item.name).toSet();
+    for (final table in tables.values) {
+      table.resolveCustomTypes(enumNames);
+    }
+
     return ParsedZModel(tables: tables.values.toList(), enums: enums);
   }
 
@@ -147,6 +152,7 @@ class ZModelGenerator {
   }) {
     final buffer = StringBuffer()
       ..writeln(banner)
+      ..writeln('// dart format off')
       ..writeln();
 
     if (parsed.requiresConvertImport || includeRpcClients) {
@@ -163,8 +169,15 @@ class ZModelGenerator {
 
     var first = true;
     final hasConcreteTables = parsed.tables.any((table) => !table.isAbstract);
-    if (hasConcreteTables || includeRpcClients) {
-      buffer.write(_renderZModelBase(parsed));
+    final hasEnums = parsed.enums.any((item) => !item.isEmpty);
+    if (hasConcreteTables || includeRpcClients || hasEnums) {
+      buffer.write(
+        _renderModelScaffolding(
+          parsed,
+          includeZModel: hasConcreteTables || includeRpcClients,
+          includeEnumBase: hasEnums,
+        ),
+      );
       first = false;
     }
 
@@ -203,8 +216,17 @@ class ZModelGenerator {
   String renderEnum(EnumDefinition definition) {
     final buffer = StringBuffer()
       ..writeln(banner)
-      ..writeln()
-      ..write(_renderEnumBody(definition));
+      ..writeln('// dart format off')
+      ..writeln();
+    buffer.write(
+      _renderModelScaffolding(
+        ParsedZModel(tables: const [], enums: [definition]),
+        includeZModel: false,
+        includeEnumBase: true,
+      ),
+    );
+    buffer.writeln();
+    buffer.write(_renderEnumBody(definition));
     return buffer.toString();
   }
 
@@ -212,6 +234,7 @@ class ZModelGenerator {
   String renderTable(TableDefinition definition) {
     final buffer = StringBuffer()
       ..writeln(banner)
+      ..writeln('// dart format off')
       ..writeln();
 
     buffer.writeln("import 'package:zmodel_to_dart/zmodel_to_dart.dart';");
@@ -239,7 +262,7 @@ class ZModelGenerator {
 
   String _renderEnumBody(EnumDefinition definition) {
     final buffer = StringBuffer();
-    buffer.writeln('enum ${definition.className} {');
+    buffer.writeln('enum ${definition.className} implements ZModelEnum {');
 
     var first = true;
     for (var value in definition.values) {
@@ -258,12 +281,11 @@ class ZModelGenerator {
     buffer.writeln('  final String value;');
     buffer.writeln('  const ${definition.className}(this.value);');
     buffer.writeln();
-    buffer.writeln('  static ${definition.className} fromJson(String json) {');
     buffer.writeln(
-      '    return ${definition.className}.values.firstWhere((e) => e.value == json,',
+      '  static ${definition.className}? fromJson(String? json) {',
     );
     buffer.writeln(
-      "      orElse: () => throw Exception('Unknown ${definition.className} value: \$json'));",
+      '    return ZModelEnum.fromJson<${definition.className}>(${definition.className}.values, json);',
     );
     buffer.writeln('  }');
     buffer.writeln();
@@ -308,50 +330,295 @@ class ZModelGenerator {
     return buffer.toString();
   }
 
-  String _renderZModelBase(ParsedZModel parsed) {
+  String _renderModelScaffolding(
+    ParsedZModel parsed, {
+    required bool includeZModel,
+    required bool includeEnumBase,
+  }) {
     final tables = parsed.tables.where((table) => !table.isAbstract).toList();
     final buffer = StringBuffer();
-    buffer.writeln('abstract class ZModel {');
-    buffer.writeln('  const ZModel();');
-    buffer.writeln();
-    buffer.writeln('  Map<String, dynamic> toJson();');
-    buffer.writeln();
-    buffer.writeln('  static String modelNameOf<T extends ZModel>() {');
-    buffer.writeln('    switch (T) {');
-    for (final table in tables) {
+    if (includeEnumBase) {
+      buffer.writeln('abstract interface class ZModelEnum {');
+      buffer.writeln('  String get value;');
+      buffer.writeln();
+      buffer.writeln('  static T? fromJson<T extends Enum>(');
+      buffer.writeln('    List<T> values,');
+      buffer.writeln('    String? json,');
+      buffer.writeln('  ) {');
+      buffer.writeln('    if (json == null) return null;');
+      buffer.writeln('    for (final value in values) {');
+      buffer.writeln('      final enumValue = value as Object;');
       buffer.writeln(
-        "      case const (${table.className}): return '${table.name}';",
+        '      if (enumValue is ZModelEnum && enumValue.value == json) {',
       );
+      buffer.writeln('        return value;');
+      buffer.writeln('      }');
+      buffer.writeln('    }');
+      buffer.writeln('    return null;');
+      buffer.writeln('  }');
+      buffer.writeln('}');
     }
-    buffer.writeln(
-      "      default: throw ArgumentError('Unknown ZModel type: \$T');",
-    );
-    buffer.writeln('    }');
-    buffer.writeln('  }');
-    buffer.writeln();
-    buffer.writeln(
-      '  static T fromJson<T extends ZModel>(Map<String, dynamic> json) {',
-    );
-    buffer.writeln('    switch (T) {');
-    for (final table in tables) {
+    if (includeEnumBase && includeZModel) {
+      buffer.writeln();
+    }
+    if (includeZModel) {
+      buffer.writeln('abstract class ZModel {');
+      buffer.writeln('  const ZModel();');
+      buffer.writeln();
+      buffer.writeln('  Map<String, dynamic> toJson();');
+      buffer.writeln();
+      buffer.writeln('  static String modelNameOf<T extends ZModel>() {');
+      buffer.writeln('    switch (T) {');
+      for (final table in tables) {
+        buffer.writeln(
+          "      case const (${table.className}): return '${table.name}';",
+        );
+      }
       buffer.writeln(
-        '      case const (${table.className}): return ${table.className}.fromJson(json) as T;',
+        "      default: throw ArgumentError('Unknown ZModel type: \$T');",
       );
+      buffer.writeln('    }');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln(
+        '  static T fromJson<T extends ZModel>(Map<String, dynamic> json) {',
+      );
+      buffer.writeln('    switch (T) {');
+      for (final table in tables) {
+        buffer.writeln(
+          '      case const (${table.className}): return ${table.className}.fromJson(json) as T;',
+        );
+      }
+      buffer.writeln(
+        "      default: throw ArgumentError('Unknown ZModel type: \$T');",
+      );
+      buffer.writeln('    }');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln(
+        '  static List<T> listFromJson<T extends ZModel>(List<dynamic> items) {',
+      );
+      buffer.writeln(
+        '    return items.map((item) => fromJson<T>(item as Map<String, dynamic>)).toList();',
+      );
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln(
+        '  static T? modelOrNull<T extends ZModel>(Object? value) {',
+      );
+      buffer.writeln('    if (value == null) return null;');
+      buffer.writeln(
+        '    if (value is Map<String, dynamic>) return fromJson<T>(value);',
+      );
+      buffer.writeln('    if (value is Map<Object?, Object?>) {');
+      buffer.writeln('      return fromJson<T>({');
+      buffer.writeln(
+        '        for (final entry in value.entries) entry.key.toString(): entry.value,',
+      );
+      buffer.writeln('      });');
+      buffer.writeln('    }');
+      buffer.writeln('    return null;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln(
+        '  static Map<String, dynamic>? modelToJsonOrNull(ZModel? value) {',
+      );
+      buffer.writeln('    return value?.toJson();');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln(
+        '  static List<T>? listOrNull<T extends ZModel>(Object? value) {',
+      );
+      buffer.writeln('    if (value == null) return null;');
+      buffer.writeln(
+        '    if (value is List<dynamic>) return listFromJson<T>(value);',
+      );
+      buffer.writeln(
+        '    if (value is List) return listFromJson<T>(value.toList());',
+      );
+      buffer.writeln('    return null;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln(
+        '  static List<Map<String, dynamic>>? listToJsonOrNull<T extends ZModel>(List<T>? value) {',
+      );
+      buffer.writeln(
+        '    return value?.map((item) => item.toJson()).toList();',
+      );
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static T? enumOrNull<T extends Enum>(');
+      buffer.writeln('    List<T> values,');
+      buffer.writeln('    Object? value,');
+      buffer.writeln('  ) {');
+      buffer.writeln(
+        '    return ZModelEnum.fromJson<T>(values, stringOrNull(value));',
+      );
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln(
+        '  static String? enumToJsonOrNull<T extends Enum>(T? value) {',
+      );
+      buffer.writeln('    final enumValue = value as Object?;');
+      buffer.writeln(
+        '    if (enumValue is ZModelEnum) return enumValue.value;',
+      );
+      buffer.writeln('    return null;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static List<T>? enumListOrNull<T extends Enum>(');
+      buffer.writeln('    List<T> values,');
+      buffer.writeln('    Object? value,');
+      buffer.writeln('  ) {');
+      buffer.writeln('    if (value == null) return null;');
+      buffer.writeln('    if (value is! List) return null;');
+      buffer.writeln(
+        '    return value.map((item) => enumOrNull<T>(values, item)).whereType<T>().toList();',
+      );
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln(
+        '  static List<String?>? enumListToJsonOrNull<T extends Enum>(List<T>? value) {',
+      );
+      buffer.writeln(
+        '    return value?.map((item) => enumToJsonOrNull<T>(item)).toList();',
+      );
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static String? stringOrNull(Object? value) {');
+      buffer.writeln('    if (value == null) return null;');
+      buffer.writeln('    if (value is String) return value;');
+      buffer.writeln('    return value.toString();');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static String stringOrEmpty(Object? value) {');
+      buffer.writeln("    return stringOrNull(value) ?? '';");
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static String? stringToJsonOrNull(String? value) {');
+      buffer.writeln('    return value;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static int? intOrNull(Object? value) {');
+      buffer.writeln('    if (value == null) return null;');
+      buffer.writeln('    if (value is int) return value;');
+      buffer.writeln('    if (value is num) return value.toInt();');
+      buffer.writeln('    return int.tryParse(value.toString());');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static int intOrZero(Object? value) {');
+      buffer.writeln('    return intOrNull(value) ?? 0;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static int? intToJsonOrNull(int? value) {');
+      buffer.writeln('    return value;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static num? numOrNull(Object? value) {');
+      buffer.writeln('    if (value == null) return null;');
+      buffer.writeln('    if (value is num) return value;');
+      buffer.writeln('    return num.tryParse(value.toString());');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static num numOrZero(Object? value) {');
+      buffer.writeln('    return numOrNull(value) ?? 0;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static num? numToJsonOrNull(num? value) {');
+      buffer.writeln('    return value;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static bool? boolOrNull(Object? value) {');
+      buffer.writeln('    if (value == null) return null;');
+      buffer.writeln('    if (value is bool) return value;');
+      buffer.writeln('    if (value is num) return value != 0;');
+      buffer.writeln('    if (value is String) {');
+      buffer.writeln('      switch (value.toLowerCase()) {');
+      buffer.writeln("        case 'true':");
+      buffer.writeln("        case '1':");
+      buffer.writeln('          return true;');
+      buffer.writeln("        case 'false':");
+      buffer.writeln("        case '0':");
+      buffer.writeln('          return false;');
+      buffer.writeln('      }');
+      buffer.writeln('    }');
+      buffer.writeln('    return null;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static bool boolOrFalse(Object? value) {');
+      buffer.writeln('    return boolOrNull(value) ?? false;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static bool? boolToJsonOrNull(bool? value) {');
+      buffer.writeln('    return value;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static BigInt? bigIntOrNull(Object? value) {');
+      buffer.writeln('    if (value == null) return null;');
+      buffer.writeln('    if (value is BigInt) return value;');
+      buffer.writeln('    if (value is int) return BigInt.from(value);');
+      buffer.writeln(
+        '    if (value is num) return BigInt.from(value.toInt());',
+      );
+      buffer.writeln('    return BigInt.tryParse(value.toString());');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static BigInt bigIntOrZero(Object? value) {');
+      buffer.writeln('    return bigIntOrNull(value) ?? BigInt.zero;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static String? bigIntToJsonOrNull(BigInt? value) {');
+      buffer.writeln('    return value?.toString();');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static DateTime? dateTimeOrNull(Object? value) {');
+      buffer.writeln('    if (value is DateTime) return value;');
+      buffer.writeln(
+        '    if (value is String) return DateTime.tryParse(value);',
+      );
+      buffer.writeln('    return null;');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  static DateTime dateTimeOrZero(Object? value) {');
+      buffer.writeln('    return dateTimeOrNull(value) ?? DateTime(0);');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln(
+        '  static String? dateTimeToJsonOrNull(DateTime? value) {',
+      );
+      buffer.writeln('    return value?.toIso8601String();');
+      buffer.writeln('  }');
+      if (parsed.requiresConvertImport) {
+        buffer.writeln();
+        buffer.writeln('  static Uint8List? bytesOrNull(Object? value) {');
+        buffer.writeln('    if (value == null) return null;');
+        buffer.writeln('    if (value is Uint8List) return value;');
+        buffer.writeln(
+          '    if (value is List<int>) return Uint8List.fromList(value);',
+        );
+        buffer.writeln(
+          '    if (value is List<dynamic>) return Uint8List.fromList(value.cast<int>());',
+        );
+        buffer.writeln(
+          '    if (value is String) return Uint8List.fromList(base64Decode(value));',
+        );
+        buffer.writeln('    return null;');
+        buffer.writeln('  }');
+        buffer.writeln();
+        buffer.writeln('  static Uint8List bytesOrEmpty(Object? value) {');
+        buffer.writeln('    return bytesOrNull(value) ?? Uint8List(0);');
+        buffer.writeln('  }');
+        buffer.writeln();
+        buffer.writeln(
+          '  static String? bytesToJsonOrNull(Uint8List? value) {',
+        );
+        buffer.writeln(
+          '    return value == null ? null : base64Encode(value.toList());',
+        );
+        buffer.writeln('  }');
+      }
+      buffer.writeln('}');
     }
-    buffer.writeln(
-      "      default: throw ArgumentError('Unknown ZModel type: \$T');",
-    );
-    buffer.writeln('    }');
-    buffer.writeln('  }');
-    buffer.writeln();
-    buffer.writeln(
-      '  static List<T> listFromJson<T extends ZModel>(List<dynamic> items) {',
-    );
-    buffer.writeln(
-      '    return items.map((item) => fromJson<T>(item as Map<String, dynamic>)).toList();',
-    );
-    buffer.writeln('  }');
-    buffer.writeln('}');
     return buffer.toString();
   }
 
@@ -548,6 +815,13 @@ class TableDefinition {
     if (extendsTableName.isEmpty) return;
     extendsTable = tables[extendsTableName];
   }
+
+  /// Marks custom column types such as enums after the schema is fully parsed.
+  void resolveCustomTypes(Set<String> enumNames) {
+    for (var i = 0; i < columns.length; i++) {
+      columns[i] = columns[i].resolvedCustomType(enumNames);
+    }
+  }
 }
 
 /// Parsed column definition or table directive fragment.
@@ -560,6 +834,7 @@ class ColumnDefinition {
     required this.isUnique,
     required this.isArray,
     required this.isForeignKey,
+    required this.isEnum,
     required this.zmodelType,
     required this.dartType,
   }) : assert(name.isNotEmpty);
@@ -578,6 +853,9 @@ class ColumnDefinition {
 
   /// Whether the column references another model or enum-like object.
   final bool isForeignKey;
+
+  /// Whether the column references a generated enum.
+  final bool isEnum;
 
   /// Whether the column is nullable.
   final bool isNullable;
@@ -618,7 +896,7 @@ class ColumnDefinition {
         dartType = 'int';
         break;
       case 'BigInt':
-        dartType = 'int';
+        dartType = 'BigInt';
         break;
       case 'Float':
         dartType = 'num';
@@ -661,6 +939,7 @@ class ColumnDefinition {
       isUnique: isUnique,
       isArray: isArray,
       isForeignKey: isForeignKey,
+      isEnum: false,
       zmodelType: zmodelType,
       dartType: dartType,
     );
@@ -673,10 +952,27 @@ class ColumnDefinition {
       dartType: dartType.isEmpty ? other.dartType : dartType,
       isArray: isArray || other.isArray,
       isForeignKey: isForeignKey || other.isForeignKey,
+      isEnum: isEnum || other.isEnum,
       zmodelType: zmodelType.isEmpty ? other.zmodelType : zmodelType,
       isNullable: isNullable || other.isNullable,
       isPrimaryKey: isPrimaryKey || other.isPrimaryKey,
       isUnique: isUnique || other.isUnique,
+    );
+  }
+
+  /// Resolves custom parsed types once all enums are known.
+  ColumnDefinition resolvedCustomType(Set<String> enumNames) {
+    if (!enumNames.contains(zmodelType)) return this;
+    return ColumnDefinition(
+      name: name,
+      isNullable: isNullable,
+      isPrimaryKey: isPrimaryKey,
+      isUnique: isUnique,
+      isArray: isArray,
+      isForeignKey: isForeignKey,
+      isEnum: true,
+      zmodelType: zmodelType,
+      dartType: dartType,
     );
   }
 
@@ -726,6 +1022,7 @@ class ColumnDefinition {
             dartType: '',
             isArray: false,
             isForeignKey: false,
+            isEnum: false,
             isNullable: false,
             isPrimaryKey: isPrimaryKey,
             isUnique: isUnique,
@@ -758,78 +1055,98 @@ class ColumnDefinition {
 
   /// Generated `fromJson` expression for the field.
   String get castFromJson {
-    var cast = '';
-
-    if (dartType == 'int') {
-      if (zmodelType == 'BigInt') {
-        if (isNullable) {
-          return "$attributeName: json['$name'] != null ? int.tryParse(json['$name'].toString()) : null";
-        }
-        return "$attributeName: int.tryParse(json['$name'].toString()) ?? 0";
+    if (dartType == 'String') {
+      if (isNullable) {
+        return "$attributeName: ZModel.stringOrNull(json['$name'])";
       }
-      cast = ' as int';
+      return "$attributeName: ZModel.stringOrEmpty(json['$name'])";
+    } else if (dartType == 'int') {
+      if (isNullable) {
+        return "$attributeName: ZModel.intOrNull(json['$name'])";
+      }
+      return "$attributeName: ZModel.intOrZero(json['$name'])";
     } else if (dartType == 'num') {
-      cast = ' as num';
+      if (isNullable) {
+        return "$attributeName: ZModel.numOrNull(json['$name'])";
+      }
+      return "$attributeName: ZModel.numOrZero(json['$name'])";
     } else if (dartType == 'bool') {
-      cast = ' as bool';
-    } else if (dartType == 'String') {
-      cast = ' as String';
+      if (isNullable) {
+        return "$attributeName: ZModel.boolOrNull(json['$name'])";
+      }
+      return "$attributeName: ZModel.boolOrFalse(json['$name'])";
+    } else if (dartType == 'BigInt') {
+      if (isNullable) {
+        return "$attributeName: ZModel.bigIntOrNull(json['$name'])";
+      }
+      return "$attributeName: ZModel.bigIntOrZero(json['$name'])";
     } else if (dartType == 'DateTime') {
       if (isNullable) {
-        return "$attributeName: DateTime.tryParse(json['$name'])";
+        return "$attributeName: ZModel.dateTimeOrNull(json['$name'])";
       }
-      return "$attributeName: DateTime.tryParse(json['$name']) ?? DateTime(0)";
+      return "$attributeName: ZModel.dateTimeOrZero(json['$name'])";
     } else if (dartType == 'Uint8List') {
       if (isNullable) {
-        return "$attributeName: json['$name'] != null ? base64Decode(json['$name']) : null";
+        return "$attributeName: ZModel.bytesOrNull(json['$name'])";
       }
-      return "$attributeName: base64Decode(json['$name'])";
+      return "$attributeName: ZModel.bytesOrEmpty(json['$name'])";
     } else if (isArray) {
+      if (isEnum) {
+        return "$attributeName: ZModel.enumListOrNull<$dartType>($dartType.values, json['$name'])";
+      }
       if (isForeignKey) {
-        return "$attributeName: (json['$name'] as List<dynamic>${isNullable ? '?' : ''})${isNullable ? '?' : ''}.map<$dartType>((e) => $dartType.fromJson(e as Map<String, dynamic>)).toList()";
+        return "$attributeName: ZModel.listOrNull<$dartType>(json['$name'])";
       }
       if (isNullable) {
         return "$attributeName: (json['$name'] as List<dynamic>?)?.cast<$dartType>()";
       }
       return "$attributeName: (json['$name'] as List<dynamic>).cast<$dartType>()";
+    } else if (isEnum) {
+      return "$attributeName: ZModel.enumOrNull<$dartType>($dartType.values, json['$name'])";
     } else if (isForeignKey) {
-      return "$attributeName: json['$name'] != null ? $dartType.fromJson(json['$name']) : null";
+      return "$attributeName: ZModel.modelOrNull<$dartType>(json['$name'])";
     }
-
-    if (isNullable && cast.isNotEmpty) {
-      return "$attributeName: json['$name'] != null ? json['$name']$cast : null";
-    }
-
-    return "$attributeName: json['$name']$cast";
+    return "$attributeName: json['$name']";
   }
 
   /// Generated `toJson` expression for the field.
   String get castToJson {
-    var cast = '';
-
+    if (dartType == 'String') {
+      return "'$name': ZModel.stringToJsonOrNull($attributeName)";
+    }
+    if (dartType == 'int') {
+      return "'$name': ZModel.intToJsonOrNull($attributeName)";
+    }
+    if (dartType == 'num') {
+      return "'$name': ZModel.numToJsonOrNull($attributeName)";
+    }
+    if (dartType == 'bool') {
+      return "'$name': ZModel.boolToJsonOrNull($attributeName)";
+    }
+    if (dartType == 'BigInt') {
+      return "'$name': ZModel.bigIntToJsonOrNull($attributeName)";
+    }
     if (dartType == 'DateTime') {
-      cast = '.toIso8601String()';
-    } else if (dartType == 'Uint8List') {
-      if (isNullable) {
-        return "'$name': $attributeName != null ? base64Encode($attributeName!.toList()) : null";
-      }
-      return "'$name': base64Encode($attributeName.toList())";
-    } else if (isArray && isForeignKey) {
-      if (isNullable || isForeignKey) {
-        return "'$name': $attributeName?.map((e) => e.toJson()).toList()";
-      }
-      return "'$name': $attributeName.map((e) => e.toJson()).toList()";
-    } else if (isForeignKey) {
-      if (isNullable || isForeignKey) {
-        return "'$name': $attributeName?.toJson()";
-      }
-      return "'$name': $attributeName.toJson()";
+      return "'$name': ZModel.dateTimeToJsonOrNull($attributeName)";
     }
-
-    if (isNullable && cast.isNotEmpty) {
-      return "'$name': $attributeName?$cast";
+    if (dartType == 'Uint8List') {
+      return "'$name': ZModel.bytesToJsonOrNull($attributeName)";
     }
-
-    return "'$name': $attributeName$cast";
+    if (isArray) {
+      if (isEnum) {
+        return "'$name': ZModel.enumListToJsonOrNull<$dartType>($attributeName)";
+      }
+      if (isForeignKey) {
+        return "'$name': ZModel.listToJsonOrNull<$dartType>($attributeName)";
+      }
+      return "'$name': $attributeName";
+    }
+    if (isEnum) {
+      return "'$name': ZModel.enumToJsonOrNull<$dartType>($attributeName)";
+    }
+    if (isForeignKey) {
+      return "'$name': ZModel.modelToJsonOrNull($attributeName)";
+    }
+    return "'$name': $attributeName";
   }
 }
