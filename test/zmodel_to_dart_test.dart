@@ -327,9 +327,35 @@ model user {
       output,
       contains('return ZModel.fromJson<T>(response as Map<String, dynamic>);'),
     );
+    expect(output, contains('Future<Object?> _send('));
+    expect(output, contains('return _decodeResponse(response);'));
+    expect(
+      output,
+      contains('bool _looksLikeSerializedEnvelope(Object? value) {'),
+    );
+    expect(output, contains('Object? _deserializeSerializedResponse('));
+    expect(
+      output,
+      contains("value.containsKey('data') && value.containsKey('meta')"),
+    );
+    expect(output, contains("final serialization = meta['serialization'];"));
+    expect(
+      output,
+      contains(
+        "final data = _normalizeJsonValue(response.containsKey('data') ? response['data'] : response['json']);",
+      ),
+    );
+    expect(output, contains("case 'date':"));
+    expect(output, contains("case 'bigint':"));
     expect(
       output,
       contains("final params = <String, String>{'q': jsonEncode(payload)};"),
+    );
+    expect(
+      output,
+      contains(
+        "final response = await _send(ZenStackRpcMethod.get, _path<T>('findMany')",
+      ),
     );
     expect(output, contains("'data': data.toJson()"));
     expect(output, contains("'where': where"));

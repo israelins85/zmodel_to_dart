@@ -9,6 +9,7 @@ A Dart builder that generates DTO classes from `.zmodel` files.
 - Supports inherited fields from `extends`
 - Handles scalar values, enums, bytes, arrays, and nested model references
 - Optionally generates ZenStack RPC clients with direct typed parameters
+- Automatically unwraps `superjson` RPC responses before model parsing
 
 ## Usage
 

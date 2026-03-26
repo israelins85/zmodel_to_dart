@@ -20,6 +20,167 @@ class ZModelRpcGenerator {
       '  String _path<T extends ZModel>(String operation) => \'\$basePath/\${ZModel.modelNameOf<T>()}/\$operation\';',
     );
     buffer.writeln();
+    buffer.writeln('  Future<Object?> _send(');
+    buffer.writeln('    ZenStackRpcMethod method,');
+    buffer.writeln('    String path, {');
+    buffer.writeln('    Map<String, String>? queryParameters,');
+    buffer.writeln('    Object? body,');
+    buffer.writeln('  }) async {');
+    buffer.writeln(
+      '    final response = await _transport.send(method, path, queryParameters: queryParameters, body: body);',
+    );
+    buffer.writeln('    return _decodeResponse(response);');
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln('  Object? _decodeResponse(Object? response) {');
+    buffer.writeln('    if (response is String) {');
+    buffer.writeln('      try {');
+    buffer.writeln('        return _decodeResponse(jsonDecode(response));');
+    buffer.writeln('      } catch (_) {');
+    buffer.writeln('        return response;');
+    buffer.writeln('      }');
+    buffer.writeln('    }');
+    buffer.writeln();
+    buffer.writeln('    if (_looksLikeSerializedEnvelope(response)) {');
+    buffer.writeln(
+      '      return _deserializeSerializedResponse(response as Map<Object?, Object?>);',
+    );
+    buffer.writeln('    }');
+    buffer.writeln();
+    buffer.writeln('    return _normalizeJsonValue(response);');
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln('  bool _looksLikeSerializedEnvelope(Object? value) {');
+    buffer.writeln('    if (value is! Map<Object?, Object?>) return false;');
+    buffer.writeln(
+      "    if (value.containsKey('json') && value.containsKey('meta')) return true;",
+    );
+    buffer.writeln(
+      "    return value.containsKey('data') && value.containsKey('meta');",
+    );
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln(
+      '  Object? _deserializeSerializedResponse(Map<Object?, Object?> response) {',
+    );
+    buffer.writeln(
+      "    final data = _normalizeJsonValue(response.containsKey('data') ? response['data'] : response['json']);",
+    );
+    buffer.writeln("    final values = _serializedValues(response['meta']);");
+    buffer.writeln('    if (values is! Map<Object?, Object?>) return data;');
+    buffer.writeln('    for (final entry in values.entries) {');
+    buffer.writeln('      final key = entry.key?.toString();');
+    buffer.writeln('      if (key == null || key.isEmpty) continue;');
+    buffer.writeln(
+      "      _applySuperJsonAnnotation(data, key.split('.'), entry.value);",
+    );
+    buffer.writeln('    }');
+    buffer.writeln('    return data;');
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln('  Object? _serializedValues(Object? meta) {');
+    buffer.writeln('    if (meta is! Map<Object?, Object?>) return null;');
+    buffer.writeln("    final values = meta['values'];");
+    buffer.writeln('    if (values is Map<Object?, Object?>) return values;');
+    buffer.writeln("    final serialization = meta['serialization'];");
+    buffer.writeln(
+      '    if (serialization is! Map<Object?, Object?>) return null;',
+    );
+    buffer.writeln("    final serializationValues = serialization['values'];");
+    buffer.writeln(
+      '    if (serializationValues is Map<Object?, Object?>) return serializationValues;',
+    );
+    buffer.writeln('    return null;');
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln('  void _applySuperJsonAnnotation(');
+    buffer.writeln('    Object? current,');
+    buffer.writeln('    List<String> path,');
+    buffer.writeln('    Object? annotation,');
+    buffer.writeln('  ) {');
+    buffer.writeln('    if (path.isEmpty) return;');
+    buffer.writeln();
+    buffer.writeln('    final segment = path.first;');
+    buffer.writeln('    if (current is List) {');
+    buffer.writeln('      final index = int.tryParse(segment);');
+    buffer.writeln(
+      '      if (index == null || index < 0 || index >= current.length) return;',
+    );
+    buffer.writeln('      if (path.length == 1) {');
+    buffer.writeln(
+      '        current[index] = _deserializeSuperJsonValue(current[index], annotation);',
+    );
+    buffer.writeln('        return;');
+    buffer.writeln('      }');
+    buffer.writeln(
+      '      _applySuperJsonAnnotation(current[index], path.sublist(1), annotation);',
+    );
+    buffer.writeln('      return;');
+    buffer.writeln('    }');
+    buffer.writeln();
+    buffer.writeln('    if (current is Map<String, dynamic>) {');
+    buffer.writeln("      if (!current.containsKey(segment)) return;");
+    buffer.writeln('      if (path.length == 1) {');
+    buffer.writeln(
+      '        current[segment] = _deserializeSuperJsonValue(current[segment], annotation);',
+    );
+    buffer.writeln('        return;');
+    buffer.writeln('      }');
+    buffer.writeln(
+      '      _applySuperJsonAnnotation(current[segment], path.sublist(1), annotation);',
+    );
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln('  Object? _deserializeSuperJsonValue(');
+    buffer.writeln('    Object? value,');
+    buffer.writeln('    Object? annotation,');
+    buffer.writeln('  ) {');
+    buffer.writeln('    final type = _superJsonType(annotation);');
+    buffer.writeln('    switch (type) {');
+    buffer.writeln("      case 'date':");
+    buffer.writeln(
+      '        if (value is String) return DateTime.tryParse(value) ?? value;',
+    );
+    buffer.writeln('        return value;');
+    buffer.writeln("      case 'bigint':");
+    buffer.writeln('        if (value is BigInt) return value;');
+    buffer.writeln('        if (value is int) return BigInt.from(value);');
+    buffer.writeln(
+      '        if (value is num) return BigInt.from(value.toInt());',
+    );
+    buffer.writeln(
+      '        if (value is String) return BigInt.tryParse(value) ?? value;',
+    );
+    buffer.writeln('        return value;');
+    buffer.writeln('      default:');
+    buffer.writeln('        return value;');
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln('  String? _superJsonType(Object? annotation) {');
+    buffer.writeln('    if (annotation is List && annotation.isNotEmpty) {');
+    buffer.writeln('      return annotation.first?.toString().toLowerCase();');
+    buffer.writeln('    }');
+    buffer.writeln('    return annotation?.toString().toLowerCase();');
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln('  Object? _normalizeJsonValue(Object? value) {');
+    buffer.writeln('    if (value is List) {');
+    buffer.writeln('      return value.map(_normalizeJsonValue).toList();');
+    buffer.writeln('    }');
+    buffer.writeln();
+    buffer.writeln('    if (value is Map<Object?, Object?>) {');
+    buffer.writeln('      return <String, dynamic>{');
+    buffer.writeln(
+      '        for (final entry in value.entries) entry.key.toString(): _normalizeJsonValue(entry.value),',
+    );
+    buffer.writeln('      };');
+    buffer.writeln('    }');
+    buffer.writeln();
+    buffer.writeln('    return value;');
+    buffer.writeln('  }');
+    buffer.writeln();
     buffer.writeln(
       '  Map<String, String>? _queryParameters({'
       'Map<String, dynamic>? where, '
@@ -63,7 +224,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.get, _path<T>('findMany'), queryParameters: _queryParameters(where: where, select: select, include: include, orderBy: orderBy, take: take, skip: skip, meta: meta));",
+      "    final response = await _send(ZenStackRpcMethod.get, _path<T>('findMany'), queryParameters: _queryParameters(where: where, select: select, include: include, orderBy: orderBy, take: take, skip: skip, meta: meta));",
     );
     buffer.writeln('    final items = response as List<dynamic>? ?? const [];');
     buffer.writeln('    return ZModel.listFromJson<T>(items);');
@@ -78,7 +239,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.get, _path<T>('findUnique'), queryParameters: _queryParameters(where: where, select: select, include: include, meta: meta));",
+      "    final response = await _send(ZenStackRpcMethod.get, _path<T>('findUnique'), queryParameters: _queryParameters(where: where, select: select, include: include, meta: meta));",
     );
     buffer.writeln('    if (response == null) return null;');
     buffer.writeln(
@@ -97,7 +258,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.get, _path<T>('findFirst'), queryParameters: _queryParameters(where: where, select: select, include: include, orderBy: orderBy, skip: skip, meta: meta));",
+      "    final response = await _send(ZenStackRpcMethod.get, _path<T>('findFirst'), queryParameters: _queryParameters(where: where, select: select, include: include, orderBy: orderBy, skip: skip, meta: meta));",
     );
     buffer.writeln('    if (response == null) return null;');
     buffer.writeln(
@@ -113,7 +274,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('create'), body: {'data': data.toJson(), 'select': ?select, 'include': ?include});",
+      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('create'), body: {'data': data.toJson(), 'select': ?select, 'include': ?include});",
     );
     buffer.writeln(
       '    return ZModel.fromJson<T>(response as Map<String, dynamic>);',
@@ -129,7 +290,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('update'), body: {'data': data.toJson(), 'where': ?where, 'select': ?select, 'include': ?include});",
+      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('update'), body: {'data': data.toJson(), 'where': ?where, 'select': ?select, 'include': ?include});",
     );
     buffer.writeln(
       '    return ZModel.fromJson<T>(response as Map<String, dynamic>);',
@@ -146,7 +307,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('upsert'), body: {'create': create.toJson(), 'update': update.toJson(), 'where': ?where, 'select': ?select, 'include': ?include});",
+      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('upsert'), body: {'create': create.toJson(), 'update': update.toJson(), 'where': ?where, 'select': ?select, 'include': ?include});",
     );
     buffer.writeln(
       '    return ZModel.fromJson<T>(response as Map<String, dynamic>);',
@@ -159,7 +320,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('delete'), body: {'where': where});",
+      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('delete'), body: {'where': where});",
     );
     buffer.writeln(
       '    return ZModel.fromJson<T>(response as Map<String, dynamic>);',
@@ -172,7 +333,7 @@ class ZModelRpcGenerator {
       ') async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('createMany'), body: {'data': data.map((item) => item.toJson()).toList()});",
+      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('createMany'), body: {'data': data.map((item) => item.toJson()).toList()});",
     );
     buffer.writeln(
       '    return Map<String, dynamic>.from(response as Map<String, dynamic>);',
@@ -186,7 +347,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('updateMany'), body: {'data': data, 'where': ?where});",
+      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('updateMany'), body: {'data': data, 'where': ?where});",
     );
     buffer.writeln(
       '    return Map<String, dynamic>.from(response as Map<String, dynamic>);',
@@ -199,7 +360,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.post, _path<T>('deleteMany'), body: {'where': ?where});",
+      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('deleteMany'), body: {'where': ?where});",
     );
     buffer.writeln(
       '    return Map<String, dynamic>.from(response as Map<String, dynamic>);',
@@ -213,7 +374,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _transport.send(ZenStackRpcMethod.get, _path<T>('count'), queryParameters: _queryParameters(where: where, meta: meta));",
+      "    final response = await _send(ZenStackRpcMethod.get, _path<T>('count'), queryParameters: _queryParameters(where: where, meta: meta));",
     );
     buffer.writeln('    return (response as num?)?.toInt() ?? 0;');
     buffer.writeln('  }');
