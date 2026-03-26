@@ -1,3 +1,8 @@
+## 0.4.0
+
+- Expanded generated ZenStack RPC operations and helper payload types
+- Documented the broader generated RPC surface in the README
+
 ## 0.3.0
 
 - Refactored generated model scaffolding and serialization helpers
