@@ -186,9 +186,16 @@ class ZModelRpcGenerator {
       'Map<String, dynamic>? where, '
       'Map<String, dynamic>? select, '
       'Map<String, dynamic>? include, '
+      'Map<String, dynamic>? having, '
       'List<Map<String, String>>? orderBy, '
+      'List<String>? by, '
       'int? take, '
       'int? skip, '
+      'Map<String, dynamic>? count, '
+      'Map<String, dynamic>? avg, '
+      'Map<String, dynamic>? sum, '
+      'Map<String, dynamic>? min, '
+      'Map<String, dynamic>? max, '
       'Map<String, dynamic>? meta'
       '}) {',
     );
@@ -196,9 +203,16 @@ class ZModelRpcGenerator {
     buffer.writeln("      'where': ?where,");
     buffer.writeln("      'select': ?select,");
     buffer.writeln("      'include': ?include,");
+    buffer.writeln("      'having': ?having,");
     buffer.writeln("      'orderBy': ?orderBy,");
+    buffer.writeln("      'by': ?by,");
     buffer.writeln("      'take': ?take,");
     buffer.writeln("      'skip': ?skip,");
+    buffer.writeln("      '_count': ?count,");
+    buffer.writeln("      '_avg': ?avg,");
+    buffer.writeln("      '_sum': ?sum,");
+    buffer.writeln("      '_min': ?min,");
+    buffer.writeln("      '_max': ?max,");
     buffer.writeln('    };');
     buffer.writeln(
       '    if (payload.isEmpty && (meta == null || meta.isEmpty)) return null;',
@@ -290,7 +304,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('update'), body: {'data': data.toJson(), 'where': ?where, 'select': ?select, 'include': ?include});",
+      "    final response = await _send(ZenStackRpcMethod.patch, _path<T>('update'), body: {'data': data.toJson(), 'where': ?where, 'select': ?select, 'include': ?include});",
     );
     buffer.writeln(
       '    return ZModel.fromJson<T>(response as Map<String, dynamic>);',
@@ -320,7 +334,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('delete'), body: {'where': where});",
+      "    final response = await _send(ZenStackRpcMethod.delete, _path<T>('delete'), body: {'where': where});",
     );
     buffer.writeln(
       '    return ZModel.fromJson<T>(response as Map<String, dynamic>);',
@@ -341,17 +355,46 @@ class ZModelRpcGenerator {
     buffer.writeln('  }');
     buffer.writeln();
     buffer.writeln(
+      '  Future<List<T>> createManyAndReturn<T extends ZModel>('
+      'List<T> data, {'
+      'Map<String, dynamic>? select, '
+      'Map<String, dynamic>? include'
+      '}) async {',
+    );
+    buffer.writeln(
+      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('createManyAndReturn'), body: {'data': data.map((item) => item.toJson()).toList(), 'select': ?select, 'include': ?include});",
+    );
+    buffer.writeln('    final items = response as List<dynamic>? ?? const [];');
+    buffer.writeln('    return ZModel.listFromJson<T>(items);');
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln(
       '  Future<Map<String, dynamic>> updateMany<T extends ZModel>('
       'Map<String, dynamic> data, {'
       'Map<String, dynamic>? where'
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('updateMany'), body: {'data': data, 'where': ?where});",
+      "    final response = await _send(ZenStackRpcMethod.patch, _path<T>('updateMany'), body: {'data': data, 'where': ?where});",
     );
     buffer.writeln(
       '    return Map<String, dynamic>.from(response as Map<String, dynamic>);',
     );
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln(
+      '  Future<List<T>> updateManyAndReturn<T extends ZModel>('
+      'Map<String, dynamic> data, {'
+      'Map<String, dynamic>? where, '
+      'Map<String, dynamic>? select, '
+      'Map<String, dynamic>? include'
+      '}) async {',
+    );
+    buffer.writeln(
+      "    final response = await _send(ZenStackRpcMethod.patch, _path<T>('updateManyAndReturn'), body: {'data': data, 'where': ?where, 'select': ?select, 'include': ?include});",
+    );
+    buffer.writeln('    final items = response as List<dynamic>? ?? const [];');
+    buffer.writeln('    return ZModel.listFromJson<T>(items);');
     buffer.writeln('  }');
     buffer.writeln();
     buffer.writeln(
@@ -360,7 +403,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _send(ZenStackRpcMethod.post, _path<T>('deleteMany'), body: {'where': ?where});",
+      "    final response = await _send(ZenStackRpcMethod.delete, _path<T>('deleteMany'), body: {'where': ?where});",
     );
     buffer.writeln(
       '    return Map<String, dynamic>.from(response as Map<String, dynamic>);',
@@ -377,6 +420,53 @@ class ZModelRpcGenerator {
       "    final response = await _send(ZenStackRpcMethod.get, _path<T>('count'), queryParameters: _queryParameters(where: where, meta: meta));",
     );
     buffer.writeln('    return (response as num?)?.toInt() ?? 0;');
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln(
+      '  Future<Map<String, dynamic>> aggregate<T extends ZModel>({'
+      'Map<String, dynamic>? where, '
+      'List<Map<String, String>>? orderBy, '
+      'int? take, '
+      'int? skip, '
+      'Map<String, dynamic>? count, '
+      'Map<String, dynamic>? avg, '
+      'Map<String, dynamic>? sum, '
+      'Map<String, dynamic>? min, '
+      'Map<String, dynamic>? max, '
+      'Map<String, dynamic>? meta'
+      '}) async {',
+    );
+    buffer.writeln(
+      "    final response = await _send(ZenStackRpcMethod.get, _path<T>('aggregate'), queryParameters: _queryParameters(where: where, orderBy: orderBy, take: take, skip: skip, count: count, avg: avg, sum: sum, min: min, max: max, meta: meta));",
+    );
+    buffer.writeln(
+      '    return Map<String, dynamic>.from(response as Map<String, dynamic>? ?? const <String, dynamic>{});',
+    );
+    buffer.writeln('  }');
+    buffer.writeln();
+    buffer.writeln(
+      '  Future<List<Map<String, dynamic>>> groupBy<T extends ZModel>({'
+      'required List<String> by, '
+      'Map<String, dynamic>? where, '
+      'Map<String, dynamic>? having, '
+      'List<Map<String, String>>? orderBy, '
+      'int? take, '
+      'int? skip, '
+      'Map<String, dynamic>? count, '
+      'Map<String, dynamic>? avg, '
+      'Map<String, dynamic>? sum, '
+      'Map<String, dynamic>? min, '
+      'Map<String, dynamic>? max, '
+      'Map<String, dynamic>? meta'
+      '}) async {',
+    );
+    buffer.writeln(
+      "    final response = await _send(ZenStackRpcMethod.get, _path<T>('groupBy'), queryParameters: _queryParameters(by: by, where: where, having: having, orderBy: orderBy, take: take, skip: skip, count: count, avg: avg, sum: sum, min: min, max: max, meta: meta));",
+    );
+    buffer.writeln('    final items = response as List<dynamic>? ?? const [];');
+    buffer.writeln(
+      '    return items.map((item) => Map<String, dynamic>.from(item as Map)).toList();',
+    );
     buffer.writeln('  }');
     buffer.writeln('}');
     return buffer.toString();

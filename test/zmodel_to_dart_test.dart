@@ -305,7 +305,10 @@ model user {
       rpcBasePath: '/api/rpc/model',
     );
 
-    expect(output, contains('enum ZenStackRpcMethod { get, post }'));
+    expect(
+      output,
+      contains('enum ZenStackRpcMethod { get, post, patch, delete }'),
+    );
     expect(output, contains('abstract interface class ZenStackRpcTransport {'));
     expect(output, contains('class ZModelRpcClient {'));
     expect(
@@ -357,6 +360,32 @@ model user {
         "final response = await _send(ZenStackRpcMethod.get, _path<T>('findMany')",
       ),
     );
+    expect(
+      output,
+      contains(
+        "final response = await _send(ZenStackRpcMethod.patch, _path<T>('update')",
+      ),
+    );
+    expect(
+      output,
+      contains(
+        "final response = await _send(ZenStackRpcMethod.delete, _path<T>('delete')",
+      ),
+    );
+    expect(
+      output,
+      contains(
+        "final response = await _send(ZenStackRpcMethod.post, _path<T>('createManyAndReturn')",
+      ),
+    );
+    expect(
+      output,
+      contains(
+        "final response = await _send(ZenStackRpcMethod.patch, _path<T>('updateManyAndReturn')",
+      ),
+    );
+    expect(output, contains("_path<T>('aggregate')"));
+    expect(output, contains("_path<T>('groupBy')"));
     expect(output, contains("'data': data.toJson()"));
     expect(output, contains("'where': where"));
   });

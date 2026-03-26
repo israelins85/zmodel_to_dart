@@ -7,6 +7,12 @@ enum ZenStackRpcMethod {
 
   /// Sends request data using HTTP POST.
   post,
+
+  /// Sends request data using HTTP PATCH.
+  patch,
+
+  /// Sends request data using HTTP DELETE.
+  delete,
 }
 
 /// Transport abstraction used by generated RPC clients.
@@ -114,8 +120,107 @@ class ZModelRequest {
   }
 
   /// Sets the `where` clause for deleteMany operations.
-  ZModelRequest deleteMany(Map<String, dynamic> where) {
-    _data['where'] = where;
+  ZModelRequest deleteMany([Map<String, dynamic>? where]) {
+    if (where != null) {
+      _data['where'] = where;
+    }
+    return this;
+  }
+
+  /// Sets the `data` payload for createMany operations.
+  ZModelRequest createMany(List<Map<String, dynamic>> data) {
+    _data['data'] = data;
+    return this;
+  }
+
+  /// Sets the payload for createManyAndReturn operations.
+  ZModelRequest createManyAndReturn(
+    List<Map<String, dynamic>> data, {
+    Map<String, dynamic>? select,
+    Map<String, dynamic>? include,
+  }) {
+    _data.addAll({'data': data, 'select': ?select, 'include': ?include});
+    return this;
+  }
+
+  /// Sets the payload for updateMany operations.
+  ZModelRequest updateMany(
+    Map<String, dynamic> data, {
+    Map<String, dynamic>? where,
+  }) {
+    _data.addAll({'data': data, 'where': ?where});
+    return this;
+  }
+
+  /// Sets the payload for updateManyAndReturn operations.
+  ZModelRequest updateManyAndReturn(
+    Map<String, dynamic> data, {
+    Map<String, dynamic>? where,
+    Map<String, dynamic>? select,
+    Map<String, dynamic>? include,
+  }) {
+    _data.addAll({
+      'data': data,
+      'where': ?where,
+      'select': ?select,
+      'include': ?include,
+    });
+    return this;
+  }
+
+  /// Sets the payload for aggregate operations.
+  ZModelRequest aggregate({
+    Map<String, dynamic>? where,
+    List<Map<String, String>>? orderBy,
+    int? take,
+    int? skip,
+    Map<String, dynamic>? count,
+    Map<String, dynamic>? avg,
+    Map<String, dynamic>? sum,
+    Map<String, dynamic>? min,
+    Map<String, dynamic>? max,
+  }) {
+    _data.addAll({
+      'where': ?where,
+      'orderBy': ?orderBy,
+      'take': ?take,
+      'skip': ?skip,
+      '_count': ?count,
+      '_avg': ?avg,
+      '_sum': ?sum,
+      '_min': ?min,
+      '_max': ?max,
+    });
+    return this;
+  }
+
+  /// Sets the payload for groupBy operations.
+  ZModelRequest groupBy({
+    required List<String> by,
+    Map<String, dynamic>? where,
+    Map<String, dynamic>? having,
+    List<Map<String, String>>? orderBy,
+    int? take,
+    int? skip,
+    Map<String, dynamic>? count,
+    Map<String, dynamic>? avg,
+    Map<String, dynamic>? sum,
+    Map<String, dynamic>? min,
+    Map<String, dynamic>? max,
+  }) {
+    _data.addAll({
+      'by': by,
+      'where': ?where,
+      'having': ?having,
+      'orderBy': ?orderBy,
+      'take': ?take,
+      'skip': ?skip,
+      '_count': ?count,
+      '_avg': ?avg,
+      '_sum': ?sum,
+      '_min': ?min,
+      '_max': ?max,
+    });
     return this;
   }
 

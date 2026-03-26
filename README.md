@@ -96,6 +96,20 @@ class DioZenStackRpcTransport implements ZenStackRpcTransport {
           queryParameters: queryParameters,
         );
         break;
+      case ZenStackRpcMethod.patch:
+        response = await _dio.patch<dynamic>(
+          path,
+          queryParameters: queryParameters,
+          data: body,
+        );
+        break;
+      case ZenStackRpcMethod.delete:
+        response = await _dio.delete<dynamic>(
+          path,
+          queryParameters: queryParameters,
+          data: body,
+        );
+        break;
       case ZenStackRpcMethod.post:
         response = await _dio.post<dynamic>(
           path,
