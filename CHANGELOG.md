@@ -1,3 +1,8 @@
+## 0.3.0
+
+- Refactored generated model scaffolding and serialization helpers
+- Added automatic unwrapping for `superjson` RPC responses before model parsing
+
 ## 0.2.2
 
 - Normalized generated RPC path templates to use single-quoted Dart strings
