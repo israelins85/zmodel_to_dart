@@ -1,3 +1,7 @@
+## 0.4.1
+
+- Aligned serialized RPC envelope test expectations with the current generator output
+
 ## 0.4.0
 
 - Expanded generated ZenStack RPC operations and helper payload types
