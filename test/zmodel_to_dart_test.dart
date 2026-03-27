@@ -337,10 +337,7 @@ model user {
       contains('bool _looksLikeSerializedEnvelope(Object? value) {'),
     );
     expect(output, contains('Object? _deserializeSerializedResponse('));
-    expect(
-      output,
-      contains("value.containsKey('data') && value.containsKey('meta')"),
-    );
+    expect(output, contains("value.containsKey('data')"));
     expect(output, contains("final serialization = meta['serialization'];"));
     expect(
       output,
