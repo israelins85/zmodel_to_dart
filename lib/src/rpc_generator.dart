@@ -52,11 +52,12 @@ class ZModelRpcGenerator {
     buffer.writeln();
     buffer.writeln('  bool _looksLikeSerializedEnvelope(Object? value) {');
     buffer.writeln('    if (value is! Map<Object?, Object?>) return false;');
+    buffer.writeln("    final data = value['data'] ?? value['json'];");
     buffer.writeln(
-      "    if (value.containsKey('json') && value.containsKey('meta')) return true;",
+      "    if (data is List || data is Map<Object?, Object?>) return true;",
     );
     buffer.writeln(
-      "    return value.containsKey('data') && value.containsKey('meta');",
+      "    return value.containsKey('json') && value.containsKey('meta');",
     );
     buffer.writeln('  }');
     buffer.writeln();

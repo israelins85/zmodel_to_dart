@@ -337,7 +337,11 @@ model user {
       contains('bool _looksLikeSerializedEnvelope(Object? value) {'),
     );
     expect(output, contains('Object? _deserializeSerializedResponse('));
-    expect(output, contains("value.containsKey('data')"));
+    expect(output, contains("final data = value['data'] ?? value['json'];"));
+    expect(
+      output,
+      contains("if (data is List || data is Map<Object?, Object?>) return true;"),
+    );
     expect(output, contains("final serialization = meta['serialization'];"));
     expect(
       output,
