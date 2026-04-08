@@ -2,6 +2,8 @@
 
 A Dart builder that generates DTO classes from `.zmodel` files.
 
+For an overview of the parser, renderer, CLI flow, and RPC generation internals, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ## Features
 
 - Parses `model`, `abstract model`, and `enum` declarations
