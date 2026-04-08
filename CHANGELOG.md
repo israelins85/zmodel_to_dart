@@ -1,3 +1,8 @@
+## 0.4.2
+
+- Improved generated RPC serialized-envelope detection for payloads wrapped under `data` or `json`
+- Added an `ARCHITECTURE.md` guide and linked it from the README
+
 ## 0.4.1
 
 - Aligned serialized RPC envelope test expectations with the current generator output

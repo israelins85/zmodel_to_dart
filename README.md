@@ -19,7 +19,7 @@ For an overview of the parser, renderer, CLI flow, and RPC generation internals,
 
 ```yaml
 dev_dependencies:
-    zmodel_to_dart: ^0.4.1
+    zmodel_to_dart: ^0.4.2
     build_runner: ^2.7.0
 ```
 
