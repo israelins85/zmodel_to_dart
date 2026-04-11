@@ -1,3 +1,10 @@
+## 0.5.0
+
+- Aligned generated RPC mutation methods with ZenStack HTTP verbs, including `PUT` for updates
+- Required `where` payloads for generated and manual bulk update/delete request helpers
+- Removed the generated and manual `updateManyAndReturn` RPC helper
+- Updated the README transport example for `ZenStackRpcMethod.put`
+
 ## 0.4.2
 
 - Improved generated RPC serialized-envelope detection for payloads wrapped under `data` or `json`
