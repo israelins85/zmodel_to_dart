@@ -624,7 +624,7 @@ class ZModelGenerator {
 
   String _renderRpcSupport() {
     final buffer = StringBuffer();
-    buffer.writeln('enum ZenStackRpcMethod { get, post, patch, delete }');
+    buffer.writeln('enum ZenStackRpcMethod { get, post, put, patch, delete }');
     buffer.writeln();
     buffer.writeln('abstract interface class ZenStackRpcTransport {');
     buffer.writeln('  Future<Object?> send(');

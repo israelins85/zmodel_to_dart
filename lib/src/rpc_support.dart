@@ -8,6 +8,9 @@ enum ZenStackRpcMethod {
   /// Sends request data using HTTP POST.
   post,
 
+  /// Sends request data using HTTP PUT.
+  put,
+
   /// Sends request data using HTTP PATCH.
   patch,
 
@@ -120,10 +123,8 @@ class ZModelRequest {
   }
 
   /// Sets the `where` clause for deleteMany operations.
-  ZModelRequest deleteMany([Map<String, dynamic>? where]) {
-    if (where != null) {
-      _data['where'] = where;
-    }
+  ZModelRequest deleteMany(Map<String, dynamic> where) {
+    _data['where'] = where;
     return this;
   }
 
@@ -144,27 +145,11 @@ class ZModelRequest {
   }
 
   /// Sets the payload for updateMany operations.
-  ZModelRequest updateMany(
-    Map<String, dynamic> data, {
-    Map<String, dynamic>? where,
+  ZModelRequest updateMany({
+    required Map<String, dynamic> data,
+    required Map<String, dynamic> where,
   }) {
-    _data.addAll({'data': data, 'where': ?where});
-    return this;
-  }
-
-  /// Sets the payload for updateManyAndReturn operations.
-  ZModelRequest updateManyAndReturn(
-    Map<String, dynamic> data, {
-    Map<String, dynamic>? where,
-    Map<String, dynamic>? select,
-    Map<String, dynamic>? include,
-  }) {
-    _data.addAll({
-      'data': data,
-      'where': ?where,
-      'select': ?select,
-      'include': ?include,
-    });
+    _data.addAll({'data': data, 'where': where});
     return this;
   }
 

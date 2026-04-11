@@ -289,6 +289,22 @@ rpc_base_path: /api/rpc/model
     expect(config.rpcBasePath, '/api/rpc/model');
   });
 
+  test('ZModelRequest bulk operations require and store where', () {
+    final deleteManyRequest = ZModelRequest().deleteMany({'id': 'user-1'});
+    final updateManyRequest = ZModelRequest().updateMany(
+      data: {'active': false},
+      where: {'id': 'user-1'},
+    );
+
+    expect(deleteManyRequest.asBody, {
+      'where': {'id': 'user-1'},
+    });
+    expect(updateManyRequest.asBody, {
+      'data': {'active': false},
+      'where': {'id': 'user-1'},
+    });
+  });
+
   test('generates a generic rpc client with direct method parameters', () {
     const source = '''
 model user {
@@ -307,7 +323,7 @@ model user {
 
     expect(
       output,
-      contains('enum ZenStackRpcMethod { get, post, patch, delete }'),
+      contains('enum ZenStackRpcMethod { get, post, put, patch, delete }'),
     );
     expect(output, contains('abstract interface class ZenStackRpcTransport {'));
     expect(output, contains('class ZModelRpcClient {'));
@@ -340,7 +356,9 @@ model user {
     expect(output, contains("final data = value['data'] ?? value['json'];"));
     expect(
       output,
-      contains("if (data is List || data is Map<Object?, Object?>) return true;"),
+      contains(
+        "if (data is List || data is Map<Object?, Object?>) return true;",
+      ),
     );
     expect(output, contains("final serialization = meta['serialization'];"));
     expect(
@@ -364,13 +382,37 @@ model user {
     expect(
       output,
       contains(
-        "final response = await _send(ZenStackRpcMethod.patch, _path<T>('update')",
+        "final response = await _send(ZenStackRpcMethod.put, _path<T>('update')",
       ),
     );
     expect(
       output,
       contains(
-        "final response = await _send(ZenStackRpcMethod.delete, _path<T>('delete')",
+        'Future<Map<String, dynamic>> updateMany<T extends ZModel>({required Map<String, dynamic> data, required Map<String, dynamic> where}) async {',
+      ),
+    );
+    expect(
+      output,
+      contains(
+        "final response = await _send(ZenStackRpcMethod.put, _path<T>('updateMany'), body: {'data': data, 'where': where});",
+      ),
+    );
+    expect(
+      output,
+      contains(
+        "final response = await _send(ZenStackRpcMethod.delete, _path<T>('delete'), queryParameters: _queryParameters(where: where));",
+      ),
+    );
+    expect(
+      output,
+      contains(
+        'Future<Map<String, dynamic>> deleteMany<T extends ZModel>({required Map<String, dynamic> where}) async {',
+      ),
+    );
+    expect(
+      output,
+      contains(
+        "final response = await _send(ZenStackRpcMethod.delete, _path<T>('deleteMany'), queryParameters: _queryParameters(where: where));",
       ),
     );
     expect(
@@ -379,15 +421,20 @@ model user {
         "final response = await _send(ZenStackRpcMethod.post, _path<T>('createManyAndReturn')",
       ),
     );
-    expect(
-      output,
-      contains(
-        "final response = await _send(ZenStackRpcMethod.patch, _path<T>('updateManyAndReturn')",
-      ),
-    );
     expect(output, contains("_path<T>('aggregate')"));
     expect(output, contains("_path<T>('groupBy')"));
     expect(output, contains("'data': data.toJson()"));
-    expect(output, contains("'where': where"));
+    expect(output, contains("'where': ?where"));
+    expect(output, isNot(contains("_path<T>('delete'), body:")));
+    expect(output, isNot(contains("_path<T>('deleteMany'), body:")));
+    expect(
+      output,
+      isNot(
+        contains(
+          "_path<T>('updateMany'), body: {'data': data, 'where': ?where}",
+        ),
+      ),
+    );
+    expect(output, isNot(contains('updateManyAndReturn')));
   });
 }

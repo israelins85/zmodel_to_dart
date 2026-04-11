@@ -305,7 +305,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _send(ZenStackRpcMethod.patch, _path<T>('update'), body: {'data': data.toJson(), 'where': ?where, 'select': ?select, 'include': ?include});",
+      "    final response = await _send(ZenStackRpcMethod.put, _path<T>('update'), body: {'data': data.toJson(), 'where': ?where, 'select': ?select, 'include': ?include});",
     );
     buffer.writeln(
       '    return ZModel.fromJson<T>(response as Map<String, dynamic>);',
@@ -335,7 +335,7 @@ class ZModelRpcGenerator {
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _send(ZenStackRpcMethod.delete, _path<T>('delete'), body: {'where': where});",
+      "    final response = await _send(ZenStackRpcMethod.delete, _path<T>('delete'), queryParameters: _queryParameters(where: where));",
     );
     buffer.writeln(
       '    return ZModel.fromJson<T>(response as Map<String, dynamic>);',
@@ -370,13 +370,13 @@ class ZModelRpcGenerator {
     buffer.writeln('  }');
     buffer.writeln();
     buffer.writeln(
-      '  Future<Map<String, dynamic>> updateMany<T extends ZModel>('
-      'Map<String, dynamic> data, {'
-      'Map<String, dynamic>? where'
+      '  Future<Map<String, dynamic>> updateMany<T extends ZModel>({'
+      'required Map<String, dynamic> data, '
+      'required Map<String, dynamic> where'
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _send(ZenStackRpcMethod.patch, _path<T>('updateMany'), body: {'data': data, 'where': ?where});",
+      "    final response = await _send(ZenStackRpcMethod.put, _path<T>('updateMany'), body: {'data': data, 'where': where});",
     );
     buffer.writeln(
       '    return Map<String, dynamic>.from(response as Map<String, dynamic>);',
@@ -384,27 +384,12 @@ class ZModelRpcGenerator {
     buffer.writeln('  }');
     buffer.writeln();
     buffer.writeln(
-      '  Future<List<T>> updateManyAndReturn<T extends ZModel>('
-      'Map<String, dynamic> data, {'
-      'Map<String, dynamic>? where, '
-      'Map<String, dynamic>? select, '
-      'Map<String, dynamic>? include'
-      '}) async {',
-    );
-    buffer.writeln(
-      "    final response = await _send(ZenStackRpcMethod.patch, _path<T>('updateManyAndReturn'), body: {'data': data, 'where': ?where, 'select': ?select, 'include': ?include});",
-    );
-    buffer.writeln('    final items = response as List<dynamic>? ?? const [];');
-    buffer.writeln('    return ZModel.listFromJson<T>(items);');
-    buffer.writeln('  }');
-    buffer.writeln();
-    buffer.writeln(
       '  Future<Map<String, dynamic>> deleteMany<T extends ZModel>({'
-      'Map<String, dynamic>? where'
+      'required Map<String, dynamic> where'
       '}) async {',
     );
     buffer.writeln(
-      "    final response = await _send(ZenStackRpcMethod.delete, _path<T>('deleteMany'), body: {'where': ?where});",
+      "    final response = await _send(ZenStackRpcMethod.delete, _path<T>('deleteMany'), queryParameters: _queryParameters(where: where));",
     );
     buffer.writeln(
       '    return Map<String, dynamic>.from(response as Map<String, dynamic>);',
